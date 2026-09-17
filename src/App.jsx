@@ -5,6 +5,7 @@ function App() {
   const [faltantes, setFaltantes] = useState([]);
   const [maestro, setMaestro] = useState({});
   const [loading, setLoading] = useState(false);
+  const [itemAConfirmar, setItemAConfirmar] = useState(null);
 
   useEffect(() => {
     cargarDatos();
@@ -129,10 +130,8 @@ function App() {
 
           <div className="space-y-6 pb-24">
             {Object.keys(maestro).map(categoria => {
-              // Filtramos los productos de esta categoría que todavía no están en la lista
               const productosFaltantes = maestro[categoria].filter(necesitaComprarse);
               
-              // Si ya se anotó todo de esta categoría, no la renderizamos
               if (productosFaltantes.length === 0) return null;
 
               return (
@@ -158,7 +157,6 @@ function App() {
             })}
           </div>
 
-          {/* Botón flotante para avanzar al súper */}
           <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-sm border-t border-slate-200">
             <button 
               onClick={() => setPantalla('gondola')}
@@ -170,7 +168,7 @@ function App() {
         </div>
       )}
 
-{/* --- PANTALLA 3: MODO GÓNDOLA --- */}
+      {/* --- PANTALLA 3: MODO GÓNDOLA --- */}
       {!loading && pantalla === 'gondola' && (
         <div className="animate-fade-in">
           <div className="flex justify-between items-center mb-6">
@@ -189,7 +187,8 @@ function App() {
                 .map((item, idx) => (
                   <button 
                     key={idx}
-                    onClick={() => marcarComprado(item.producto)}
+                    // Ahora abre el modal en lugar de marcar comprado directamente
+                    onClick={() => setItemAConfirmar(item.producto)}
                     className="w-full bg-white p-5 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center active:bg-emerald-50 active:scale-[0.98] transition-all text-left"
                   >
                     <span className="text-xl font-medium text-slate-700">{item.producto}</span>
@@ -210,7 +209,40 @@ function App() {
             </button>
           </div>
         </div>
-      )}    </div>
+      )} 
+      
+      {/* --- CARTEL DE CONFIRMACIÓN (MODAL) --- */}
+      {itemAConfirmar && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl text-center transform transition-all">
+            <div className="w-16 h-16 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+              🛒
+            </div>
+            <h3 className="text-xl font-bold text-slate-800 mb-2">¿Tachar producto?</h3>
+            <p className="text-slate-500 mb-6">
+              ¿Confirmás que ya pusiste <strong>{itemAConfirmar}</strong> en el changuito?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setItemAConfirmar(null)}
+                className="flex-1 bg-slate-100 text-slate-700 p-3 rounded-xl font-bold active:bg-slate-200 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  marcarComprado(itemAConfirmar);
+                  setItemAConfirmar(null);
+                }}
+                className="flex-1 bg-emerald-500 text-white p-3 rounded-xl font-bold active:bg-emerald-600 transition-colors"
+              >
+                Sí, tachar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
