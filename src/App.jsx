@@ -1,122 +1,217 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useState, useEffect } from 'react';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [pantalla, setPantalla] = useState('inicio');
+  const [faltantes, setFaltantes] = useState([]);
+  const [maestro, setMaestro] = useState({});
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    cargarDatos();
+  }, []);
+
+  // Hacemos el fetch de ambas listas en paralelo para ganar velocidad
+  const cargarDatos = async () => {
+    setLoading(true);
+    try {
+      const [resFaltantes, resMaestro] = await Promise.all([
+        fetch(`${import.meta.env.VITE_API_URL}?action=faltantes`),
+        fetch(`${import.meta.env.VITE_API_URL}?action=maestro`)
+      ]);
+      setFaltantes(await resFaltantes.json());
+      setMaestro(await resMaestro.json());
+    } catch (error) {
+      console.error("Error de conexión:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función que dispara tu papá al tocar "+"
+  const agregarFaltante = async (producto) => {
+    // 1. Optimistic UI: Lo agregamos al estado local instantáneamente
+    const nuevo = { id: Date.now().toString(), producto, estado: 'Pendiente' };
+    setFaltantes(prev => [...prev, nuevo]);
+
+    // 2. Disparamos el POST en segundo plano
+    try {
+      await fetch(import.meta.env.VITE_API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ producto })
+      });
+    } catch (error) {
+      console.error("Error guardando:", error);
+      // Acá en un futuro podrías revertir el estado si la red falla
+    }
+  };
+
+  const marcarComprado = async (producto) => {
+    // 1. Lo pasamos a estado "Comprado" localmente para que desaparezca
+    setFaltantes(prev => prev.map(f => 
+      f.producto === producto ? { ...f, estado: 'Comprado' } : f
+    ));
+
+    // 2. Disparamos el UPDATE al backend
+    fetch(import.meta.env.VITE_API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'buy', producto })
+    }).catch(err => console.error("Error al comprar:", err));
+  };
+
+  const finalizarCompra = async () => {
+    setLoading(true);
+    try {
+      await fetch(import.meta.env.VITE_API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'checkout' })
+      });
+      // Vaciamos la lista y volvemos al inicio
+      setFaltantes([]);
+      setPantalla('inicio');
+    } catch (err) {
+      console.error("Error al limpiar base:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Algoritmo de filtrado: true si el producto NO está en la lista de faltantes
+  const necesitaComprarse = (producto) => {
+    return !faltantes.some(f => f.producto === producto);
+  };
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="max-w-md mx-auto p-4 bg-slate-50 min-h-screen text-slate-800 font-sans">
+      <h1 className="text-3xl font-black text-center mb-8 text-slate-700">🛒 SuperApp</h1>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+      {loading && (
+        <div className="text-center text-slate-500 font-medium animate-pulse">
+          Sincronizando base de datos...
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      )}
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      {/* --- PANTALLA 1: INICIO --- */}
+      {!loading && pantalla === 'inicio' && (
+        <div className="flex flex-col gap-4 mt-8">
+          <div className="bg-white p-6 rounded-2xl shadow-sm text-center border border-slate-100">
+            <h2 className="text-2xl font-bold text-slate-800">Hay {faltantes.length} cosas anotadas</h2>
+            <p className="text-slate-500 mt-1">Lista actualizada por la familia</p>
+          </div>
+          
+          <button 
+            onClick={() => setPantalla('repaso')}
+            className="w-full bg-blue-500 text-white p-4 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-all"
+          >
+            📋 Repasar Inventario Maestro
+          </button>
+          
+          <button 
+            onClick={() => setPantalla('gondola')}
+            className="w-full bg-emerald-500 text-white p-4 rounded-xl text-lg font-bold shadow-md active:scale-95 transition-all"
+          >
+            🏃‍♂️ Ir directo a comprar
+          </button>
+        </div>
+      )}
+
+      {/* --- PANTALLA 2: REPASO DEL INVENTARIO --- */}
+      {!loading && pantalla === 'repaso' && (
+        <div className="animate-fade-in">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold text-slate-800">¿Falta algo de esto?</h2>
+            <button 
+              onClick={() => setPantalla('inicio')}
+              className="text-blue-500 font-semibold"
+            >
+              Volver
+            </button>
+          </div>
+
+          <div className="space-y-6 pb-24">
+            {Object.keys(maestro).map(categoria => {
+              // Filtramos los productos de esta categoría que todavía no están en la lista
+              const productosFaltantes = maestro[categoria].filter(necesitaComprarse);
+              
+              // Si ya se anotó todo de esta categoría, no la renderizamos
+              if (productosFaltantes.length === 0) return null;
+
+              return (
+                <div key={categoria} className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                  <div className="bg-slate-100 px-4 py-2 font-bold text-slate-600">
+                    {categoria}
+                  </div>
+                  <div className="divide-y divide-slate-100">
+                    {productosFaltantes.map(producto => (
+                      <div key={producto} className="flex justify-between items-center p-4">
+                        <span className="text-lg font-medium">{producto}</span>
+                        <button 
+                          onClick={() => agregarFaltante(producto)}
+                          className="bg-blue-100 text-blue-600 w-10 h-10 rounded-full text-2xl font-bold flex items-center justify-center active:bg-blue-200 transition-colors"
+                        >
+                          +
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Botón flotante para avanzar al súper */}
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-sm border-t border-slate-200">
+            <button 
+              onClick={() => setPantalla('gondola')}
+              className="w-full max-w-md mx-auto block bg-emerald-500 text-white p-4 rounded-xl text-lg font-bold shadow-lg active:scale-95 transition-all"
+            >
+              Terminé de revisar ({faltantes.length} anotados)
+            </button>
+          </div>
+        </div>
+      )}
+
+{/* --- PANTALLA 3: MODO GÓNDOLA --- */}
+      {!loading && pantalla === 'gondola' && (
+        <div className="animate-fade-in">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-black text-slate-800">A comprar</h2>
+            <button onClick={() => setPantalla('inicio')} className="text-slate-400">Cancelar</button>
+          </div>
+
+          <div className="space-y-3 pb-24">
+            {faltantes.filter(f => f.estado === 'Pendiente').length === 0 ? (
+              <div className="text-center p-8 text-slate-500 bg-white rounded-xl border border-slate-200">
+                ¡No hay nada pendiente!
+              </div>
+            ) : (
+              faltantes
+                .filter(f => f.estado === 'Pendiente')
+                .map((item, idx) => (
+                  <button 
+                    key={idx}
+                    onClick={() => marcarComprado(item.producto)}
+                    className="w-full bg-white p-5 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center active:bg-emerald-50 active:scale-[0.98] transition-all text-left"
+                  >
+                    <span className="text-xl font-medium text-slate-700">{item.producto}</span>
+                    <div className="w-8 h-8 rounded-full border-2 border-slate-200 flex items-center justify-center">
+                      <div className="w-4 h-4 rounded-full bg-transparent"></div>
+                    </div>
+                  </button>
+                ))
+            )}
+          </div>
+
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-sm border-t border-slate-200">
+            <button 
+              onClick={finalizarCompra}
+              className="w-full max-w-md mx-auto block bg-slate-800 text-white p-4 rounded-xl text-lg font-bold shadow-lg active:scale-95 transition-all"
+            >
+              🏁 Finalizar Compra y Limpiar
+            </button>
+          </div>
+        </div>
+      )}    </div>
+  );
 }
 
-export default App
+export default App;
