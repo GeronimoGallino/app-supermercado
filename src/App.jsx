@@ -168,7 +168,7 @@ function App() {
         </div>
       )}
 
-      {/* --- PANTALLA 3: MODO GÓNDOLA --- */}
+{/* --- PANTALLA 3: MODO GÓNDOLA --- */}
       {!loading && pantalla === 'gondola' && (
         <div className="animate-fade-in">
           <div className="flex justify-between items-center mb-6">
@@ -177,26 +177,43 @@ function App() {
           </div>
 
           <div className="space-y-3 pb-24">
-            {faltantes.filter(f => f.estado === 'Pendiente').length === 0 ? (
+            {faltantes.length === 0 ? (
               <div className="text-center p-8 text-slate-500 bg-white rounded-xl border border-slate-200">
-                ¡No hay nada pendiente!
+                ¡No hay nada anotado!
               </div>
             ) : (
-              faltantes
-                .filter(f => f.estado === 'Pendiente')
-                .map((item, idx) => (
-                  <button 
-                    key={idx}
-                    // Ahora abre el modal en lugar de marcar comprado directamente
-                    onClick={() => setItemAConfirmar(item.producto)}
-                    className="w-full bg-white p-5 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center active:bg-emerald-50 active:scale-[0.98] transition-all text-left"
-                  >
-                    <span className="text-xl font-medium text-slate-700">{item.producto}</span>
-                    <div className="w-8 h-8 rounded-full border-2 border-slate-200 flex items-center justify-center">
-                      <div className="w-4 h-4 rounded-full bg-transparent"></div>
-                    </div>
-                  </button>
-                ))
+              // Copiamos el array y ordenamos: los pendientes arriba, los comprados abajo
+              [...faltantes]
+                .sort((a, b) => (a.estado === 'Comprado' ? 1 : -1))
+                .map((item, idx) => {
+                  const esComprado = item.estado === 'Comprado';
+                  
+                  return (
+                    <button 
+                      key={idx}
+                      // Si ya está comprado, deshabilitamos el botón para que no abra el modal
+                      onClick={() => !esComprado && setItemAConfirmar(item.producto)}
+                      disabled={esComprado}
+                      className={`w-full p-5 rounded-xl shadow-sm border flex justify-between items-center transition-all text-left ${
+                        esComprado 
+                          ? 'bg-slate-50 border-slate-200 opacity-60' 
+                          : 'bg-white border-slate-100 active:bg-emerald-50 active:scale-[0.98]'
+                      }`}
+                    >
+                      <span className={`text-xl font-medium transition-all ${
+                        esComprado ? 'text-slate-400 line-through' : 'text-slate-700'
+                      }`}>
+                        {item.producto}
+                      </span>
+                      
+                      <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors ${
+                        esComprado ? 'border-emerald-500 bg-emerald-500' : 'border-slate-200'
+                      }`}>
+                        {esComprado && <span className="text-white font-bold">✓</span>}
+                      </div>
+                    </button>
+                  );
+                })
             )}
           </div>
 
@@ -209,8 +226,9 @@ function App() {
             </button>
           </div>
         </div>
-      )} 
+      )}
       
+            
       {/* --- CARTEL DE CONFIRMACIÓN (MODAL) --- */}
       {itemAConfirmar && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
